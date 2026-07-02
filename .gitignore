@@ -19,3 +19,12 @@ venv/
 
 # OS
 .DS_Store
+
+# Reference
+reference/
+
+
+# Tracker
+PROGRESS_UPLIFT.md
+
+
