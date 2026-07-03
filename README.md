@@ -13,6 +13,8 @@ In privacy-first ad environments (e.g. Apple's ATT framework), measuring the tru
 - Target: `visit` (visit rate ~4.7%, more signal than conversion at 0.29%)
 - Treatment ratio: 85% treated / 15% control
 
+The paper releases two datasets: **CRITEO-UPLIFTv2** (real RCT data, used here) and **CRITEO-ITE** (semi-synthetic with generated response surfaces, used for PEHE benchmarking). This project uses CRITEO-UPLIFTv2.
+
 ## Methods
 
 | Method | Description |
