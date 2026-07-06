@@ -75,6 +75,44 @@ This is exactly how the Criteo dataset was collected. The held-out control group
 
 ---
 
+## Meta-Learner Models
+
+Meta-learners are a family of uplift modeling methods that decompose the CATE estimation problem into standard supervised learning sub-problems. Instead of building a custom causal model from scratch, they reuse off-the-shelf ML models (like LightGBM) as building blocks.
+
+### T-Learner
+
+Train two separate models: one on treated users predicting `visit`, one on control users predicting `visit`. The uplift score is the difference in predicted probabilities:
+
+```
+uplift(x) = µ_t(x) - µ_c(x)
+```
+
+Simple and transparent, but it treats the two groups completely independently. When the groups are imbalanced (85% treated, 15% control here), the control model is trained on much less data and tends to be noisier.
+
+### X-Learner
+
+An extension of T-Learner designed for imbalanced groups (Künzel et al., 2019). It runs in four stages:
+
+**Stage 1:** Train µ_t and µ_c exactly like T-Learner.
+
+**Stage 2:** Compute pseudo-treatment effects per user by using the other group's model to impute the counterfactual outcome.
+- For treated users: `D_t = Y_t - µ_c(X_t)`
+- For control users: `D_c = µ_t(X_c) - Y_c`
+
+**Stage 3:** Train two effect models (regressors) to predict the pseudo-effects.
+- τ_t predicts D_t on treated users
+- τ_c predicts D_c on control users
+
+**Stage 4:** Combine with a propensity weight:
+```
+CATE(x) = g(x) · τ_c(x) + (1 - g(x)) · τ_t(x)
+```
+where `g(x) = P(T=1 | X=x)`. In RCT data this is a constant (~0.85 for the Criteo dataset).
+
+The key advantage over T-Learner is that Stage 2 allows each group's model to borrow information from the other group when computing pseudo-effects, making better use of all available data. The uplift scores operate on a different scale from T-Learner (not constrained as calibrated probabilities) so the two methods cannot be compared by score values alone. Ranking quality via the Qini curve is the proper comparison.
+
+---
+
 ## Two datasets released by Diemert et al.
 
 The paper releases two distinct datasets and it is important to know which one this project uses and why.
