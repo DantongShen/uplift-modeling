@@ -41,15 +41,35 @@ uplift-modeling/
 
 ## Results
 
-*(To be filled in after completing all phases)*
+*(Evaluation in progress — Qini AUC scores to be added after Phase 4)*
 
-- T-Learner Qini AUC: TBD
-- X-Learner Qini AUC: TBD
+**EDA (notebook 1)**
+- Observed ATE by treatment assignment: 0.0103 (intention-to-treat)
+- Observed ATE by exposure (exposed treatment vs control): 0.3763
+
+**T-Learner (notebook 2)**
+- Trained on 10% stratified sample (~1.4M rows), 80/20 train/test split
+- Mean uplift score on test set: 0.0155, consistent with observed ATE of 0.0103
+
+**X-Learner (notebook 3)**
+- Implemented via `causalml` `BaseXClassifier` with LGBMClassifier (outcome) and LGBMRegressor (effect)
+- Mean uplift score: 0.1170, std 0.1494 — broader distribution shifted right vs T-Learner
+- Score scale differs from T-Learner as Stage 3 predicts continuous pseudo-effects, not calibrated probabilities
+- Qini AUC comparison: TBD (Phase 4)
 - Budget savings vs random targeting: TBD
 
 ## Tech Stack
 
 Python · LightGBM · scikit-uplift · causalml · Streamlit
+
+## Project Phases
+
+- [x] Phase 1: EDA (`01_eda.ipynb`)
+- [x] Phase 2: T-Learner (`02_tlearner.ipynb`)
+- [x] Phase 3: X-Learner (`03_xlearner.ipynb`)
+- [ ] Phase 4: Evaluation (`04_evaluation.ipynb`)
+- [ ] Phase 5: Business Impact (`05_business_impact.ipynb`)
+- [ ] Phase 6: Dashboard (`dashboard/app.py`)
 
 ## References
 
