@@ -113,6 +113,41 @@ The key advantage over T-Learner is that Stage 2 allows each group's model to bo
 
 ---
 
+## Evaluation: Why Standard AUC Fails and Why Qini AUC Works
+
+### The problem with standard AUC
+
+Standard ROC AUC answers: "Can the model rank users who visit above users who do not?" It requires a binary ground truth label per user.
+
+This fails for uplift modeling for two reasons.
+
+First, the label problem. The thing we want to rank users by — their individual treatment effect — is never observable. Each user is either treated or control, never both. So there is no per-user uplift ground truth to evaluate against.
+
+Second, the wrong objective. A standard classifier trained to predict visit probability will rank "sure things" highest — users who would visit regardless of the ad. These users have zero incremental value. Targeting them wastes budget. The model optimizing standard AUC is solving the wrong problem.
+
+### How the Qini curve works
+
+The Qini curve sidesteps the unobservability problem by evaluating at the group level rather than the individual level.
+
+The steps:
+
+1. Rank all test users by predicted uplift score, highest first
+2. Walk through the ranked list and at each step compute cumulative incremental visits: visits in treatment users so far minus visits in control users so far, adjusted for the treatment/control size ratio
+3. Plot this against the fraction of users targeted
+4. Compare to the diagonal, which represents random targeting (no model)
+
+The key insight: even though individual uplift is unobservable, we can compare groups. If the model correctly puts persuadables at the top of the ranking, those top-ranked users will show a higher treatment vs control visit rate than lower-ranked users. A model that ranks randomly will show no such pattern.
+
+The **Qini AUC** is the area between the model curve and the random baseline. A score of 0 means the model is no better than random. A higher score means the model more effectively concentrates persuadables at the top of the ranking.
+
+### Business interpretation
+
+The Qini curve answers a practical question: "If I can only afford to target X% of my user base, how much of the total possible incremental uplift can I capture?" A perfect model captures all uplift by targeting only the persuadables. A random model captures uplift proportionally to the fraction targeted. The gap between the two is the value the model adds.
+
+This directly maps to budget efficiency — the goal of uplift modeling in advertising.
+
+---
+
 ## Two datasets released by Diemert et al.
 
 The paper releases two distinct datasets and it is important to know which one this project uses and why.
