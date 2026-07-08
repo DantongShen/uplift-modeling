@@ -34,6 +34,19 @@ This is a single number, easy to compute from a randomized experiment as the dif
 
 **Uplift Modeling** is the set of ML methods used to estimate CATE from data. The output of any uplift model (T-Learner, X-Learner, etc.) is an estimate of CATE, often called the "uplift score."
 
+### Four user segments
+
+Uplift modeling segments users by how they respond to treatment:
+
+| Segment | Behavior | Action |
+|---|---|---|
+| Persuadables | Convert only if treated | Target these |
+| Sure Things | Convert regardless of treatment | Wasted spend to target |
+| Lost Causes | Never convert regardless of treatment | Wasted spend to target |
+| Sleeping Dogs | Convert less when treated (negative effect) | Actively avoid targeting |
+
+Only persuadables generate incremental value from an ad. Targeting sure things wastes budget on users who would have converted anyway. Targeting sleeping dogs actively harms conversion. The goal of uplift modeling is to identify persuadables and rank them to the top of the targeting list.
+
 ### A critical distinction: data source
 
 The Diemert et al. paper formalizes **uplift modeling (UM)** and **ITE prediction** as two distinct problem setups, and the key difference is where the data comes from.
