@@ -31,7 +31,9 @@ uplift-modeling/
 │   ├── 02_tlearner.ipynb
 │   ├── 03_xlearner.ipynb
 │   ├── 04_evaluation.ipynb
-│   └── 05_business_impact.ipynb
+│   ├── 05_robustness_insight.ipynb
+│   ├── 06_business_impact.ipynb
+│   └── 07_privacy_constraints.ipynb
 ├── dashboard/
 │   └── app.py
 ├── images/
@@ -40,8 +42,6 @@ uplift-modeling/
 ```
 
 ## Results
-
-*(Evaluation in progress — Qini AUC scores to be added after Phase 4)*
 
 **EDA (notebook 1)**
 - Observed ATE by treatment assignment: 0.0103 (intention-to-treat)
@@ -53,10 +53,22 @@ uplift-modeling/
 
 **X-Learner (notebook 3)**
 - Implemented via `causalml` `BaseXClassifier` with LGBMClassifier (outcome) and LGBMRegressor (effect)
-- Mean uplift score: 0.1170, std 0.1494 — broader distribution shifted right vs T-Learner
+- Mean uplift score: 0.1170, std 0.1494; broader distribution shifted right vs T-Learner
 - Score scale differs from T-Learner as Stage 3 predicts continuous pseudo-effects, not calibrated probabilities
-- Qini AUC comparison: TBD (Phase 4)
-- Budget savings vs random targeting: TBD
+
+**Evaluation (notebook 4)**
+
+| Metric | T-Learner | X-Learner |
+|---|---|---|
+| Qini AUC | 0.0380 | 0.0760 |
+| Incremental visits at top 20% | 984 | 1,684 (+71%) |
+| Decile 1 observed lift | 0.0252 | 0.0369 |
+
+X-Learner's Qini AUC is 2x T-Learner's. The advantage is most pronounced at small targeting fractions: at the top 20%, X-Learner captures 71% more incremental visits. Both models converge at 100% targeting (2,458 total incremental visits). The decile analysis confirms X-Learner concentrates persuadables more tightly in the top buckets.
+
+![Qini Curve](images/qini_curve.png)
+
+![Uplift by Decile](images/uplift_by_decile.png)
 
 ## Tech Stack
 
@@ -67,9 +79,12 @@ Python · LightGBM · scikit-uplift · causalml · Streamlit
 - [x] Phase 1: EDA (`01_eda.ipynb`)
 - [x] Phase 2: T-Learner (`02_tlearner.ipynb`)
 - [x] Phase 3: X-Learner (`03_xlearner.ipynb`)
-- [ ] Phase 4: Evaluation (`04_evaluation.ipynb`)
-- [ ] Phase 5: Business Impact (`05_business_impact.ipynb`)
-- [ ] Phase 6: Dashboard (`dashboard/app.py`)
+- [x] Phase 4: Evaluation (`04_evaluation.ipynb`)
+- [ ] Phase 5: Robustness & Insight (`05_robustness_insight.ipynb`)
+- [ ] Phase 6: Business Impact (`06_business_impact.ipynb`)
+- [ ] Phase 7: Privacy Constraints (`07_privacy_constraints.ipynb`)
+- [ ] Phase 8: Dashboard (`dashboard/app.py`)
+- [ ] Phase 9: README & Documentation
 
 ## References
 
