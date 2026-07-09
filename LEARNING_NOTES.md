@@ -173,6 +173,75 @@ The core difference is real vs synthetic outcomes, and RCT vs confounded treatme
 
 ---
 
+## AUUC vs Qini AUC
+
+There are three related but distinct curves in uplift evaluation. All sort users by predicted uplift score descending, but they compute different y-axis values at each step k.
+
+**Rate version (lift curve in CausalML)**
+
+```
+y = Y_T / N_T - Y_C / N_C
+```
+
+Average uplift rate within the top-k group. Typically decreases as k grows (early users have highest true uplift). This is NOT what `uplift_auc_score` computes.
+
+**Count version = AUUC (uplift curve in sklift)**
+
+```
+y = (Y_T / N_T - Y_C / N_C) × (N_T + N_C)
+```
+
+Cumulative incremental conversions, extrapolated from rates. `sklift.metrics.uplift_auc_score` computes the area under this curve. This is what the Criteo paper (Diemert et al.) recommends.
+
+**Qini curve (separate construction)**
+
+```
+y = Y_T - Y_C × (N_T / N_C)
+```
+
+Also cumulative incremental conversions, but rescales control counts rather than extrapolating rates. `sklift.metrics.qini_auc_score` computes the area under this curve.
+
+**Notation (at each step k, i.e. the top-k users by predicted uplift score):**
+- `Y_T` = number of visits among treated users in the top-k group
+- `Y_C` = number of visits among control users in the top-k group
+- `N_T` = total treated users in the full test set (fixed, not just top-k)
+- `N_C` = total control users in the full test set (fixed, not just top-k)
+
+**Why Qini is more stable under 85/15 imbalance**
+
+With 15% control, N_C is small early in the curve, making Y_C/N_C noisy. The AUUC formula multiplies that noisy rate by (N_T + N_C), amplifying the noise. The Qini formula instead rescales Y_C by N_T/N_C directly, which is less sensitive to small control group sizes at the top of the ranking.
+
+**Convention for this project**
+
+We use sklift definitions throughout. AUUC = `uplift_auc_score` (count-based). Qini AUC = `qini_auc_score`. We use Qini AUC as the primary metric because it is more robust under the 85/15 imbalance in the Criteo dataset. Both metrics rank models identically.
+
+---
+
+## Bootstrap and Sampling Distributions
+
+Bootstrap resampling draws repeated samples with replacement from the observed data to approximate the sampling distribution of a statistic. Running 500 resamples produces 500 estimates of a metric (e.g. Qini AUC), and the spread of those estimates tells us how much the metric would vary across different test sets.
+
+### When the bootstrap distribution is normal
+
+By the Central Limit Theorem (CLT), the sampling distribution of statistics that aggregate many observations (sums, means, areas under curves) converges to normal as sample size grows. Qini AUC is essentially an area under a rank-ordered cumulative sum, close enough to a mean-like aggregation that the normal approximation holds well with large samples (279K rows here). The bootstrap distribution of Qini AUC should look like a roughly symmetric bell curve.
+
+### When normality does not apply
+
+The CLT applies to means and mean-like statistics. It does not guarantee normality for:
+
+- **Median**: depends on the density at the median point, converges more slowly and less cleanly
+- **Min / Max**: converge to extreme value distributions (Gumbel, Fréchet), not normal
+- **Quantiles**: similar issue to median, especially in the tails
+- **Ratios**: can be skewed when the denominator has high variance
+
+For these statistics, bootstrap confidence intervals are still valid (the bootstrap does not require normality), but the distribution shape will not be a bell curve.
+
+### Why bootstrap CIs are still valid without normality
+
+The bootstrap does not rely on the CLT. It directly approximates the sampling distribution empirically, whatever shape that distribution takes. The 2.5th and 97.5th percentiles of the bootstrap distribution give a valid 95% CI regardless of whether the distribution is normal, skewed, or multimodal. This is one of the main advantages of bootstrap over parametric methods that assume normality.
+
+---
+
 ## References
 
 - scikit-uplift official docs and tutorial: https://www.uplift-modeling.com/en/latest/
