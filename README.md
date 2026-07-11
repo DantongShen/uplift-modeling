@@ -4,7 +4,9 @@ Estimating individual-level incremental treatment effects for ad targeting using
 
 ## Motivation
 
-In privacy-first ad environments (e.g. Apple's ATT framework), measuring the true **incremental effect** of an ad, not just who converts but who converts *because* of the ad, is critical for budget efficiency. This project applies uplift modeling to tackle exactly that problem.
+Standard ad targeting optimizes for predicted conversion probability. The problem: the highest-converting users are often **sure things** who would have bought regardless of seeing an ad. Targeting them wastes budget without generating incremental lift.
+
+Uplift modeling reframes the question from "who will convert?" to "who will convert *because* of the ad?" This matters even more in privacy-constrained environments like Apple's ATT framework, where incrementality becomes the primary signal for campaign effectiveness when user-level attribution is unavailable.
 
 ## Dataset
 
@@ -70,6 +72,19 @@ X-Learner's Qini AUC is 2x T-Learner's. The advantage is most pronounced at smal
 
 ![Uplift by Decile](images/uplift_by_decile.png)
 
+**Robustness & Insight (notebook 5)**
+
+| Model | Bootstrap Mean | 95% CI |
+|---|---|---|
+| T-Learner | 0.0388 | [0.0225, 0.0537] |
+| X-Learner | 0.0755 | [0.0572, 0.0954] |
+
+The 95% CIs do not overlap, confirming the X-Learner advantage is robust across resamples. Persuadables profiling (top 10% vs bottom 10% by predicted uplift) shows near-perfect feature separation on f8 and f2 (KS ~0.999), with persuadables scoring higher on f2 and f9 and lower on f0, f6, and f8.
+
+![Bootstrap CI](images/qini_bootstrap_ci.png)
+
+![Persuadables Profile](images/persuadables_profile.png)
+
 ## Tech Stack
 
 Python · LightGBM · scikit-uplift · causalml · Streamlit
@@ -80,7 +95,7 @@ Python · LightGBM · scikit-uplift · causalml · Streamlit
 - [x] Phase 2: T-Learner (`02_tlearner.ipynb`)
 - [x] Phase 3: X-Learner (`03_xlearner.ipynb`)
 - [x] Phase 4: Evaluation (`04_evaluation.ipynb`)
-- [ ] Phase 5: Robustness & Insight (`05_robustness_insight.ipynb`)
+- [x] Phase 5: Robustness & Insight (`05_robustness_insight.ipynb`)
 - [ ] Phase 6: Business Impact (`06_business_impact.ipynb`)
 - [ ] Phase 7: Privacy Constraints (`07_privacy_constraints.ipynb`)
 - [ ] Phase 8: Dashboard (`dashboard/app.py`)
