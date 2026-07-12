@@ -1,4 +1,4 @@
-# Uplift Modeling with Criteo Dataset
+# Incremental Ad Targeting with Causal Machine Learning
 
 Estimating individual-level incremental treatment effects for ad targeting using causal ML meta-learners.
 
@@ -63,6 +63,7 @@ uplift-modeling/
 | Metric | T-Learner | X-Learner |
 |---|---|---|
 | Qini AUC | 0.0380 | 0.0760 |
+| AUUC | 0.0149 | 0.0299 |
 | Incremental visits at top 20% | 984 | 1,684 (+71%) |
 | Decile 1 observed lift | 0.0252 | 0.0369 |
 
@@ -74,12 +75,14 @@ X-Learner's Qini AUC is 2x T-Learner's. The advantage is most pronounced at smal
 
 **Robustness & Insight (notebook 5)**
 
-| Model | Bootstrap Mean | 95% CI |
-|---|---|---|
-| T-Learner | 0.0388 | [0.0225, 0.0537] |
-| X-Learner | 0.0755 | [0.0572, 0.0954] |
+| Metric | Model | Bootstrap Mean | 95% CI |
+|---|---|---|---|
+| Qini AUC | T-Learner | 0.0388 | [0.0225, 0.0537] |
+| Qini AUC | X-Learner | 0.0755 | [0.0572, 0.0954] |
+| AUUC | T-Learner | 0.0153 | [0.0087, 0.0213] |
+| AUUC | X-Learner | 0.0297 | [0.0227, 0.0369] |
 
-The 95% CIs do not overlap, confirming the X-Learner advantage is robust across resamples. Persuadables profiling (top 10% vs bottom 10% by predicted uplift) shows near-perfect feature separation on f8 and f2 (KS ~0.999), with persuadables scoring higher on f2 and f9 and lower on f0, f6, and f8.
+The 95% CIs do not overlap for either metric, confirming the X-Learner advantage is robust across resamples. Persuadables profiling (top 10% vs bottom 10% by predicted uplift) shows near-perfect feature separation on f8 and f2 (KS ~0.999), with persuadables scoring higher on f2 and f9 and lower on f0, f6, and f8.
 
 ![Bootstrap CI](images/qini_bootstrap_ci.png)
 
