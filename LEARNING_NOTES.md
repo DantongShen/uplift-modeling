@@ -177,43 +177,54 @@ The core difference is real vs synthetic outcomes, and RCT vs confounded treatme
 
 There are three related but distinct curves in uplift evaluation. All sort users by predicted uplift score descending, but they compute different y-axis values at each step k.
 
-**Rate version (lift curve in CausalML)**
+**Notation:**
+
+At each step k (top-k users by predicted uplift score):
+- `Y_T(k)`, `Y_C(k)` = cumulative visits among treated and control users in top-k
+- `n_T(k)`, `n_C(k)` = number of treated and control users in top-k (within-k counts, vary with k)
+- `N_T`, `N_C` = total treated and control users in the full dataset (global, fixed)
+- `N` = `N_T + N_C` = total dataset size
+
+**Rate version**
 
 ```
-y = Y_T / N_T - Y_C / N_C
+y(k) = Y_T(k) / n_T(k) - Y_C(k) / n_C(k)
 ```
 
-Average uplift rate within the top-k group. Typically decreases as k grows (early users have highest true uplift). This is NOT what `uplift_auc_score` computes.
+The observed visit rate difference between treated and control within the top-k group. Decreases as k grows since higher-uplift users are ranked first. This is the building block for AUUC but is not itself what `uplift_auc_score` computes.
 
-**Count version = AUUC (uplift curve in sklift)**
-
-```
-y = (Y_T / N_T - Y_C / N_C) × (N_T + N_C)
-```
-
-Cumulative incremental conversions, extrapolated from rates. `sklift.metrics.uplift_auc_score` computes the area under this curve. This is what the Criteo paper (Diemert et al.) recommends.
-
-**Qini curve (separate construction)**
+**AUUC**
 
 ```
-y = Y_T - Y_C × (N_T / N_C)
+y(k) = (Y_T(k) / n_T(k) - Y_C(k) / n_C(k)) × N
 ```
 
-Also cumulative incremental conversions, but rescales control counts rather than extrapolating rates. `sklift.metrics.qini_auc_score` computes the area under this curve.
+Takes the within-k uplift rate and scales it to all N users (treated + control) in the dataset. At k = N, y = ATE × N. `sklift.metrics.uplift_auc_score` computes the area under this curve minus the random baseline. Diemert et al. (Criteo paper) use AUUC as the standard evaluation metric for uplift models on RCT data.
 
-**Notation (at each step k, i.e. the top-k users by predicted uplift score):**
-- `Y_T` = number of visits among treated users in the top-k group
-- `Y_C` = number of visits among control users in the top-k group
-- `N_T` = total treated users in the full test set (fixed, not just top-k)
-- `N_C` = total control users in the full test set (fixed, not just top-k)
+**Qini curve**
 
-**Why Qini is more stable under 85/15 imbalance**
+```
+y(k) = Y_T(k) - Y_C(k) × (N_T / N_C)
+```
 
-With 15% control, N_C is small early in the curve, making Y_C/N_C noisy. The AUUC formula multiplies that noisy rate by (N_T + N_C), amplifying the noise. The Qini formula instead rescales Y_C by N_T/N_C directly, which is less sensitive to small control group sizes at the top of the ranking.
+Adjusts cumulative control visits by the global treatment/control ratio, then subtracts from cumulative treatment visits. Approximately equivalent to `n_T(k) × uplift_rate`, scoping the result to the treated users in top-k. At k = N, y = ATE × N_T. `sklift.metrics.qini_auc_score` computes the area under this curve minus the random baseline.
 
-**Convention for this project**
+**Conceptual difference between AUUC and Qini**
 
-We use sklift definitions throughout. AUUC = `uplift_auc_score` (count-based). Qini AUC = `qini_auc_score`. We use Qini AUC as the primary metric because it is more robust under the 85/15 imbalance in the Criteo dataset. Both metrics rank models identically.
+Both formulas are built on the same within-k uplift rate `Y_T(k)/n_T(k) - Y_C(k)/n_C(k)`. The difference is the population they scale to:
+
+- AUUC multiplies by N (all users), so the ceiling represents incremental effect across the full population.
+- Qini multiplies by approximately n_T(k), scaling to treated users only, so the ceiling represents incremental effect among the treated group.
+
+This is why AUUC and Qini ceilings differ by a factor of approximately N / N_T = 1 / trmnt_ratio (e.g. 1/0.85 ≈ 1.18 under 85/15 imbalance). Both measure the same ranking quality; they differ only in whose incremental effect they are counting.
+
+**Why absolute scalar values differ across the two metrics**
+
+The two scalar scores are not directly comparable because they use different normalizations. At each step k, AUUC y-values are larger than Qini y-values by a factor of approximately `N / n_T(k)`. The two sklift functions also normalize the final area differently. As a result, AUUC and Qini AUC scores for the same model will differ in absolute value but rank models identically. Do not compare the two numbers to each other; only compare within the same metric across models.
+
+**Why Qini is more stable under treatment/control imbalance**
+
+With a small control group, `n_C(k)` is very small for early k, making `Y_C(k) / n_C(k)` noisy. The AUUC formula multiplies that noisy rate by N, amplifying the noise. The Qini formula uses the global ratio `N_T / N_C` as a fixed weight, which is less sensitive to small within-k control counts and produces a more stable curve under severe imbalance.
 
 ---
 
@@ -239,6 +250,22 @@ For these statistics, bootstrap confidence intervals are still valid (the bootst
 ### Why bootstrap CIs are still valid without normality
 
 The bootstrap does not rely on the CLT. It directly approximates the sampling distribution empirically, whatever shape that distribution takes. The 2.5th and 97.5th percentiles of the bootstrap distribution give a valid 95% CI regardless of whether the distribution is normal, skewed, or multimodal. This is one of the main advantages of bootstrap over parametric methods that assume normality.
+
+---
+
+## KS Statistic (Kolmogorov-Smirnov)
+
+The KS statistic measures the maximum distance between two cumulative distribution functions (CDFs):
+
+```
+KS = max|CDF_A(x) - CDF_B(x)|
+```
+
+It ranges from 0 (identical distributions) to 1 (perfectly separated, no overlap). It is non-parametric: it makes no assumption about the shape of either distribution.
+
+To compute it, sort all values across both groups and walk through them. At each value x, compute what fraction of group A and group B fall at or below x. The KS statistic is the largest gap you find anywhere along that walk.
+
+Used in this project to rank features by how well they separate persuadables from low-uplift users. f8 and f2 scored ~0.999 (near-perfect separation). f11 scored 0.05 (barely separable). A large sample size makes p-values effectively zero for all features, so the statistic magnitude is what matters for ranking, not the p-value.
 
 ---
 
