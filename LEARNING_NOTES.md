@@ -269,6 +269,105 @@ Used in this project to rank features by how well they separate persuadables fro
 
 ---
 
+## Privacy-Era Ad Measurement: ATT, SKAN, and AAK
+
+### The Transition: IDFA to ATT to SKAN to AAK
+
+```
+IDFA era: user-level tracking, precise attribution and targeting
+    ↓
+2021, ATT launches (iOS 14.5): users can refuse tracking; 70-85% do
+    ↓
+SKAN becomes the default: aggregated data, coarsened conversion values,
+privacy thresholds, delayed postbacks
+    ↓
+2024+, AAK takes over: more flexible, but the
+"aggregation + privacy threshold" paradigm is unchanged
+```
+
+**IDFA (Identifier for Advertisers)**: a unique per-device advertising ID from Apple that enabled cross-app tracking of the same user, the basis of user-level attribution.
+
+**ATT (App Tracking Transparency)**: the permission prompt introduced in iOS 14.5. An app must obtain explicit user consent before reading the IDFA. Current opt-in rates are only ~15-30%, meaning 70-85% of iOS users are invisible to advertisers.
+
+**SKAN** is the aggregated measurement scheme built for that 70-85% who opted out.
+
+### What Is SKAN
+
+SKAdNetwork (StoreKit Ad Network) is Apple's privacy-safe mobile attribution framework. It reports deterministic, aggregated attribution data. Advertisers learn "this campaign drove N installs" but receive no device-level or user-level data.
+
+**Attribution flow:**
+
+```
+impression ≥3s → click → StoreKit renders → install → first launch within window
+   (view)      (engage)     (render)       (install)   (attribution + postback)
+```
+
+The 3-second timer is an anti-fraud mechanism: an ad must be genuinely displayed for at least 3 seconds to count as a view. StoreKit renders an App Store card without leaving the current app, cryptographically signed by the ad network.
+
+**Postback** is the core concept: an anonymous attribution receipt sent by the iOS device to the ad network. Three key properties:
+
+1. The sender is the device (iOS itself), not the app or a server. Attribution completes on-device; no party can tamper with it.
+2. Contains no user or device identifiers. A postback can never be linked to a specific user.
+3. Delayed delivery: minimum 24 hours plus random jitter, preventing user identity inference from timing.
+
+### The Three Privacy Mechanisms
+
+**Crowd anonymity tiers (Tier 0-3)**: SKAN 4.0 assigns a privacy tier to every install based on campaign install volume. Large volume receives Tier 3 (fullest postback fields); small volume receives Tier 0 (almost nothing). The core philosophy: how large a crowd you hide in determines your data granularity.
+
+**Conversion value degradation:**
+
+```
+information:  6 bits         ~1.6 bits        0 bits
+              Fine CV    →   Coarse CV    →   null
+              (0-63)         (low/med/high)   (nothing)
+              large volume   medium volume    small volume
+```
+
+CV encodes "what the user did after installing" using a scheme designed by the advertiser. As crowd size falls, the value coarsens and eventually disappears.
+
+**Hierarchical source identifier**: SKAN 4.0 allows up to a 4-digit source ID (10,000 combinations), but how many digits are actually received is determined dynamically by crowd size. Small volume receives only 2 digits (100 combinations, equivalent to SKAN 2.0 levels).
+
+Unifying rule: every data dimension in SKAN follows the same law. Crowd size determines data granularity. CV and source ID are isomorphic degradation mechanisms.
+
+### SKAN Version History
+
+| Version | Year | Key changes |
+|---|---|---|
+| 1.0 | 2018 | Basic install attribution only; barely used (IDFA was still freely available) |
+| 2.0 | 2020 | First production-grade version: CV introduced (6-bit), 100 campaign IDs, 24h timer |
+| 3.0 | 2021 | Official view-through attribution; did-win field (losing networks also receive a postback) |
+| 4.0 | 2022 | Largest upgrade: hierarchical source ID, 3 postbacks across time windows, coarse CV fallback, web-to-app attribution |
+
+SKAN 4.0's three postbacks cover conversion windows of 0-2 days, 3-7 days, and 8-35 days. Postbacks 2 and 3 only ever carry coarse CVs. Every release gives as much data as possible within the privacy-threshold framework; the framework itself has never loosened.
+
+### AdAttributionKit (AAK)
+
+AAK is SKAN's successor (first introduced 2024; major updates shipping with iOS 18.4). Five key additions:
+
+1. **Configurable attribution windows**: customizable per ad network and campaign type
+2. **Re-engagement windows**: multiple independent, overlapping re-engagement conversion windows tracked via Conversion Tags (SKAN had zero re-engagement support)
+3. **Country codes in postbacks**: optional geo signal that does not consume CV bits, but still subject to privacy thresholds
+4. **Attribution cooldown**: prevents a fresh impression from instantly overriding a recent genuine attribution
+5. **Improved testing**: Developer Mode supports faster, non-randomized attribution testing
+
+AAK's improvements are all about flexibility and coverage (windows, re-engagement, geo, cooldown), but the fundamental paradigm is unchanged: aggregated, threshold-gated, device-mediated reporting with no user-level identifiers.
+
+### Attribution vs Incrementality
+
+These two terms are often conflated but measure different things.
+
+**Attribution** asks: "which ad gets credit for this conversion?" This is what SKAN primarily constrains. It assigns credit to a campaign but cannot say whether the conversion would have happened without the ad.
+
+**Incrementality** asks: "would the conversion have happened without the ad?" This requires a holdout control group (an RCT) and measures the causal effect of the ad, not just correlation with exposure.
+
+Attribution degradation propagates into incrementality estimation: as label data becomes aggregated or censored, the signal available for training uplift models and evaluating their ranking quality degrades. But the two concepts are distinct: incrementality is measurable even when attribution is unavailable, as long as a holdout experiment is run.
+
+### Apple Ads Attribution Is Independent of SKAN
+
+Apple Ads uses its own deterministic attribution via a token taken from the device. ATT has no authority over it. The iOS ad ecosystem for third-party channels (Meta, TikTok, etc.) lives under SKAN/AAK constraints, but Apple Ads advertisers are not bound by SKAN. That said, Apple Ads advertisers still need incrementality measurement: attribution tells you which ad was clicked before a conversion, not whether the ad caused the conversion.
+
+---
+
 ## References
 
 - scikit-uplift official docs and tutorial: https://www.uplift-modeling.com/en/latest/
