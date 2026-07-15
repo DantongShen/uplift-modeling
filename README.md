@@ -10,7 +10,7 @@ Uplift modeling reframes the question from "who will convert?" to "who will conv
 
 ## Dataset
 
-[Criteo Uplift Modeling Dataset](https://ailab.criteo.com/criteo-uplift-prediction-dataset/) — ~14M rows, 12 anonymized features, binary treatment/visit/conversion labels.
+[Criteo Uplift Modeling Dataset](https://ailab.criteo.com/criteo-uplift-prediction-dataset/): ~14M rows, 12 anonymized features, binary treatment/visit/conversion labels.
 
 - Target: `visit` (visit rate ~4.7%, more signal than conversion at 0.29%)
 - Treatment ratio: 85% treated / 15% control
@@ -88,6 +88,31 @@ The 95% CIs do not overlap for either metric, confirming the X-Learner advantage
 
 ![Persuadables Profile](images/persuadables_profile.png)
 
+**Business Impact (notebook 6)**
+
+Budget efficiency at small targeting fractions (Qini scale, X-Learner vs random):
+
+| Budget | Uplift targeting | Random | Ratio |
+|---|---|---|---|
+| 1% of users | 318 incr. visits | 25 | 13x |
+| 10% of users | 885 incr. visits | 246 | 3.6x |
+
+Budget savings to reach the same incremental visit threshold (pp = percentage points):
+
+| Threshold | Uplift budget | Random budget | Saving |
+|---|---|---|---|
+| 50% of ceiling | 15% | 50% | 35pp |
+| 80% of ceiling | 32% | 80% | 48pp |
+| 95% of ceiling | 58% | 95% | 37pp |
+
+Profit-aware targeting at c/v = 0.05: optimal policy targets the top 2% of users (5,591 users), capturing 527 incremental visits at a peak profit of 248 normalized units (scales as 248 × v in deployment; e.g. v = $50 → ~$12,400). Optimal fraction expands to 39% at c/v = 0.01 and turns negative for all users at c/v ≥ 0.15.
+
+![Budget Simulation](images/budget_simulation.png)
+
+![Profit Curve](images/profit_curve.png)
+
+![Sensitivity Analysis](images/sensitivity_analysis.png)
+
 ## Tech Stack
 
 Python · LightGBM · scikit-uplift · causalml · Streamlit
@@ -99,7 +124,7 @@ Python · LightGBM · scikit-uplift · causalml · Streamlit
 - [x] Phase 3: X-Learner (`03_xlearner.ipynb`)
 - [x] Phase 4: Evaluation (`04_evaluation.ipynb`)
 - [x] Phase 5: Robustness & Insight (`05_robustness_insight.ipynb`)
-- [ ] Phase 6: Business Impact (`06_business_impact.ipynb`)
+- [x] Phase 6: Business Impact (`06_business_impact.ipynb`)
 - [ ] Phase 7: Privacy Constraints (`07_privacy_constraints.ipynb`)
 - [ ] Phase 8: Dashboard (`dashboard/app.py`)
 - [ ] Phase 9: README & Documentation
