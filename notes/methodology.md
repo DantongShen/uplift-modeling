@@ -148,13 +148,3 @@ Every reported number should carry its trust boundary. Examples used:
 - "Single fit per configuration; read the 7% gap as directional."
 
 These one-liners are what separate a research memo from a demo notebook.
-
----
-
-## Quick self-test (can you answer without looking?)
-
-1. Why does high model reliance on a feature not imply that feature has uplift signal? (Lesson 2: reliance measures how much the model uses it; value requires external validation via ablation)
-2. What combination of evidence types reveals that a feature is outcome-strong but uplift-weak? (outcome classifier AUC high; uplift Qini near random; feature importance shows model uses it; ablation confirms removal improves uplift ranking — triangulate all four)
-3. Why does threshold censoring bias the ATE downward specifically, not just randomly? (Lesson 6: missingness is MNAR; the arm with the lower base rate loses more cohorts at any threshold, inflating its estimated rate faster and compressing the gap)
-4. When is removing a dominant feature helpful vs harmful? (Lesson 5: helpful under constrained capacity where it crowds out signal; harmful at full scale where the model balances it against other features)
-5. What is the signature of broken cross-file alignment in a derived analysis? (Lesson 8: all statistics collapse to near-zero, indistinguishable from random grouping)
