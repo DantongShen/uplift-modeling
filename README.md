@@ -40,7 +40,9 @@ uplift-modeling/
 │   └── app.py
 ├── images/
 ├── models/
-└── LEARNING_NOTES.md
+└── notes/
+    ├── concepts.md
+    └── methodology.md
 ```
 
 ## Results
