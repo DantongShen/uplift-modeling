@@ -1,6 +1,6 @@
-# Uplift Modeling Learning Notes
+# Domain and Statistical Concepts
 
-A free-form log of concepts, questions, and takeaways picked up while reading docs, papers, and building the project.
+A reference log of concepts picked up while reading docs, papers, and building the uplift modeling project.
 
 ---
 
@@ -368,6 +368,65 @@ Apple Ads uses its own deterministic attribution via a token taken from the devi
 
 ---
 
+## Missing Data Mechanisms: MCAR, MAR, MNAR
+
+When data is missing, the critical question is *why* it is missing. The answer determines whether estimates are biased, and whether collecting more data fixes the problem.
+
+```
+MCAR — Missing Completely At Random
+  Why: pure chance, unrelated to any variable
+  Example: a server randomly drops 5% of records
+  Effect: smaller sample, no bias. Survivors are a
+          random subset of the full population.
+  Cure: more data.
+
+MAR — Missing At Random
+  Why: depends on observed variables, not on the
+       missing value itself
+  Example: older users less likely to report income,
+           but age is observed
+  Effect: no inherent bias if you condition on the
+          observed variable. Fixable.
+  Cure: adjust for the observed variable.
+
+MNAR — Missing Not At Random
+  Why: depends on the missing value itself
+  Example: users with very low income skip the
+           income field *because* income is low
+  Effect: survivors are systematically different from
+          dropped cases in the exact dimension you
+          are measuring. Bias is irreducible.
+  Cure: more data does NOT help. Must model the
+        censoring mechanism — often impossible.
+```
+
+The key diagnostic: ask whether the reason something is missing is correlated with its true value. If yes, it is MNAR.
+
+### SKAN threshold censoring as MNAR
+
+SKAN drops any cohort whose visit count falls below a privacy threshold t. The reason the cohort is missing is its visit count — the quantity being estimated.
+
+```
+low visit count → dropped (missing)
+high visit count → survives
+
+Survivors have inflated visit rates by construction.
+```
+
+This creates systematic downward bias in the ATE estimate, not just wider CIs. The control arm (lower base visit rate) loses more cohorts than the treatment arm at any threshold, inflating the estimated control rate faster than the treatment rate, and compressing the measured gap.
+
+More data at the same cohort structure does not fix it: small-volume cohorts are always dropped at the same threshold. The bias is baked into the measurement design.
+
+### Why MNAR is worse than noise
+
+With MCAR (pure noise), enough data converges to the truth. With MNAR, the estimate converges to the wrong number — and converges confidently, with narrow CIs around a biased value. A narrow CI around a biased estimate is more dangerous than a wide CI around an unbiased one.
+
+### Broader applicability
+
+While this notebook simulates Apple's ATT/SKAN specifically, the same structural shift — user-level tracking replaced by aggregated, threshold-gated, on-device measurement — is occurring platform-wide (Google's Privacy Sandbox, GDPR-driven consent regimes). The degradation patterns quantified here are properties of the aggregation-plus-threshold paradigm itself, not of Apple's implementation.
+
+---
+
 ## References
 
 - scikit-uplift official docs and tutorial: https://www.uplift-modeling.com/en/latest/
@@ -377,4 +436,3 @@ Apple Ads uses its own deterministic attribution via a token taken from the devi
 - Why Uplift Cannot Be Directly Validated (Matteocourthoud): https://matteocourthoud.github.io/post/evaluate_uplift/
 - Booking.com Causal Inference Paper: https://arxiv.org/abs/2308.09066
 - Dataset on HF: https://huggingface.co/datasets/criteo/criteo-uplift
-
