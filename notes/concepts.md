@@ -134,9 +134,9 @@ Standard ROC AUC answers: "Can the model rank users who visit above users who do
 
 This fails for uplift modeling for two reasons.
 
-First, the label problem. The thing we want to rank users by — their individual treatment effect — is never observable. Each user is either treated or control, never both. So there is no per-user uplift ground truth to evaluate against.
+First, the label problem. The thing we want to rank users by (their individual treatment effect) is never observable. Each user is either treated or control, never both. So there is no per-user uplift ground truth to evaluate against.
 
-Second, the wrong objective. A standard classifier trained to predict visit probability will rank "sure things" highest — users who would visit regardless of the ad. These users have zero incremental value. Targeting them wastes budget. The model optimizing standard AUC is solving the wrong problem.
+Second, the wrong objective. A standard classifier trained to predict visit probability will rank "sure things" highest: users who would visit regardless of the ad. These users have zero incremental value. Targeting them wastes budget. The model optimizing standard AUC is solving the wrong problem.
 
 ### How the Qini curve works
 
@@ -157,7 +157,7 @@ The **Qini AUC** is the area between the model curve and the random baseline. A 
 
 The Qini curve answers a practical question: "If I can only afford to target X% of my user base, how much of the total possible incremental uplift can I capture?" A perfect model captures all uplift by targeting only the persuadables. A random model captures uplift proportionally to the fraction targeted. The gap between the two is the value the model adds.
 
-This directly maps to budget efficiency — the goal of uplift modeling in advertising.
+This directly maps to budget efficiency: the goal of uplift modeling in advertising.
 
 ---
 
@@ -250,6 +250,76 @@ For these statistics, bootstrap confidence intervals are still valid (the bootst
 ### Why bootstrap CIs are still valid without normality
 
 The bootstrap does not rely on the CLT. It directly approximates the sampling distribution empirically, whatever shape that distribution takes. The 2.5th and 97.5th percentiles of the bootstrap distribution give a valid 95% CI regardless of whether the distribution is normal, skewed, or multimodal. This is one of the main advantages of bootstrap over parametric methods that assume normality.
+
+---
+
+## Statistical Power and Minimum Detectable Effect
+
+When measuring the ATE from a holdout experiment, the question is whether the observed difference between treatment and control is real or sampling noise. This requires a hypothesis test.
+
+### Two-proportion z-test for ATE
+
+The ATE estimate is the difference in observed visit rates:
+
+```
+ATE_hat = visit_rate_treatment - visit_rate_control
+```
+
+Under the null (true ATE = 0), this estimate has a standard error of:
+
+```
+SE = sqrt(p * (1-p) * (1/n_T + 1/n_C))
+```
+
+where p is the pooled visit rate and n_T, n_C are the treatment and control group sizes (pooled approximation, valid when the effect is small relative to p). The test statistic z = ATE_hat / SE follows a standard normal distribution under the null.
+
+### Minimum Detectable Effect (MDE)
+
+MDE is defined as a fixed multiple of the standard error:
+
+```
+MDE = (z_alpha + z_beta) * SE
+    = (z_alpha + z_beta) * sqrt(p * (1-p) * (1/n_T + 1/n_C))
+```
+
+where z_alpha = 1.96 (two-sided alpha=0.05) and z_beta = 0.84 (80% power). MDE has no meaning on its own; it is SE scaled by a constant that encodes the desired power level. As N grows, SE shrinks and MDE shrinks with it.
+
+### Relationship between MDE and ATE
+
+The test statistic for the ATE estimate is `ATE_hat / SE`. Detection requires this ratio to exceed z_alpha. For 80% power to detect a true effect, the true ATE must satisfy:
+
+```
+true_ATE / SE  >  z_alpha + z_beta
+```
+
+Rearranging: `true_ATE > (z_alpha + z_beta) * SE = MDE`. So "MDE < ATE" is shorthand for "the signal-to-noise ratio ATE/SE is large enough to detect the effect at 80% power."
+
+```
+MDE < ATE  →  ATE/SE large enough; detects the effect 80% of the time
+MDE > ATE  →  ATE/SE too small; effect is real but lost in sampling noise
+MDE = ATE  →  exactly at the 80% power boundary
+```
+
+N_min is the sample size where MDE equals ATE exactly. Solving for N:
+
+```
+N_min = (z_alpha + z_beta)^2 * p*(1-p) * (1/k + 1/(1-k)) / ATE^2
+```
+
+where k is the treatment allocation fraction. Increasing N shrinks SE, which shrinks MDE, until MDE drops below ATE.
+
+### Effect of treatment/control imbalance
+
+The MDE formula contains (1/n_T + 1/n_C). For a fixed total N:
+
+```
+50/50 split:  1/(0.5N) + 1/(0.5N) = 4/N
+85/15 split:  1/(0.85N) + 1/(0.15N) ≈ 7.84/N
+```
+
+The 85/15 imbalance increases the variance term by a factor of 7.84/4 = 1.96, so MDE is sqrt(1.96) ≈ 1.4x larger. Since MDE ∝ 1/sqrt(N), a 1.4x MDE penalty translates to a 1.4² ≈ 2x sample-size penalty: the same detection threshold requires roughly 2x more total users than a balanced experiment. Statistical power is bottlenecked by the smaller group: in an 85/15 split, adding more treated users does almost nothing for power; only expanding the control group helps.
+
+In the privacy constraints notebook: N_min = 25,991 under 85/15. The equivalent under 50/50 would be roughly 13,300 — the imbalance costs ~2x in required sample size (the 1.4x MDE penalty squared).
 
 ---
 
@@ -372,39 +442,17 @@ Apple Ads uses its own deterministic attribution via a token taken from the devi
 
 When data is missing, the critical question is *why* it is missing. The answer determines whether estimates are biased, and whether collecting more data fixes the problem.
 
-```
-MCAR — Missing Completely At Random
-  Why: pure chance, unrelated to any variable
-  Example: a server randomly drops 5% of records
-  Effect: smaller sample, no bias. Survivors are a
-          random subset of the full population.
-  Cure: more data.
-
-MAR — Missing At Random
-  Why: depends on observed variables, not on the
-       missing value itself
-  Example: older users less likely to report income,
-           but age is observed
-  Effect: no inherent bias if you condition on the
-          observed variable. Fixable.
-  Cure: adjust for the observed variable.
-
-MNAR — Missing Not At Random
-  Why: depends on the missing value itself
-  Example: users with very low income skip the
-           income field *because* income is low
-  Effect: survivors are systematically different from
-          dropped cases in the exact dimension you
-          are measuring. Bias is irreducible.
-  Cure: more data does NOT help. Must model the
-        censoring mechanism — often impossible.
-```
+| | Why missing | Example | Effect | Cure |
+|---|---|---|---|---|
+| **MCAR** (Missing Completely At Random) | Pure chance, unrelated to any variable | A server randomly drops 5% of records | Smaller sample, no bias | More data |
+| **MAR** (Missing At Random) | Depends on observed variables, not on the missing value itself | Older users less likely to report income, but age is observed | No inherent bias if you condition on the observed variable | Adjust for the observed variable |
+| **MNAR** (Missing Not At Random) | Depends on the missing value itself | Users with very low income skip the income field because income is low | Survivors differ from dropped cases in the exact dimension being measured; bias is irreducible | More data does not help; must model the censoring mechanism |
 
 The key diagnostic: ask whether the reason something is missing is correlated with its true value. If yes, it is MNAR.
 
 ### SKAN threshold censoring as MNAR
 
-SKAN drops any cohort whose visit count falls below a privacy threshold t. The reason the cohort is missing is its visit count — the quantity being estimated.
+SKAN drops any cohort whose visit count falls below a privacy threshold t. The reason the cohort is missing is its visit count: the quantity being estimated.
 
 ```
 low visit count → dropped (missing)
@@ -419,11 +467,11 @@ More data at the same cohort structure does not fix it: small-volume cohorts are
 
 ### Why MNAR is worse than noise
 
-With MCAR (pure noise), enough data converges to the truth. With MNAR, the estimate converges to the wrong number — and converges confidently, with narrow CIs around a biased value. A narrow CI around a biased estimate is more dangerous than a wide CI around an unbiased one.
+With MCAR (pure noise), enough data converges to the truth. With MNAR, the estimate converges to the wrong number, and converges confidently with narrow CIs around a biased value. A narrow CI around a biased estimate is more dangerous than a wide CI around an unbiased one.
 
 ### Broader applicability
 
-While this notebook simulates Apple's ATT/SKAN specifically, the same structural shift — user-level tracking replaced by aggregated, threshold-gated, on-device measurement — is occurring platform-wide (Google's Privacy Sandbox, GDPR-driven consent regimes). The degradation patterns quantified here are properties of the aggregation-plus-threshold paradigm itself, not of Apple's implementation.
+While this notebook simulates Apple's ATT/SKAN specifically, the same structural shift (user-level tracking replaced by aggregated, threshold-gated, on-device measurement) is occurring platform-wide: Google's Privacy Sandbox and GDPR-driven consent regimes follow the same paradigm. The degradation patterns quantified here are properties of the aggregation-plus-threshold design itself, not of Apple's implementation.
 
 ---
 
