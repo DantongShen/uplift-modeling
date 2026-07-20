@@ -63,7 +63,7 @@ f8/f2 carry strong OUTCOME signal (Task A strength)
 → only ablation (Ruler 2) catches it
 ```
 
-This is the field's founding lesson — response models are not uplift models — replayed at the individual-feature level.
+This is the field's founding lesson (response models are not uplift models) replayed at the individual-feature level.
 
 ---
 

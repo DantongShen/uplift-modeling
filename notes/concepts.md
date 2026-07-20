@@ -319,7 +319,7 @@ The MDE formula contains (1/n_T + 1/n_C). For a fixed total N:
 
 The 85/15 imbalance increases the variance term by a factor of 7.84/4 = 1.96, so MDE is sqrt(1.96) ≈ 1.4x larger. Since MDE ∝ 1/sqrt(N), a 1.4x MDE penalty translates to a 1.4² ≈ 2x sample-size penalty: the same detection threshold requires roughly 2x more total users than a balanced experiment. Statistical power is bottlenecked by the smaller group: in an 85/15 split, adding more treated users does almost nothing for power; only expanding the control group helps.
 
-In the privacy constraints notebook: N_min = 25,991 under 85/15. The equivalent under 50/50 would be roughly 13,300 — the imbalance costs ~2x in required sample size (the 1.4x MDE penalty squared).
+In the privacy constraints notebook: N_min = 25,991 under 85/15. The equivalent under 50/50 would be roughly 13,300; the imbalance costs ~2x in required sample size (the 1.4x MDE penalty squared).
 
 ---
 
